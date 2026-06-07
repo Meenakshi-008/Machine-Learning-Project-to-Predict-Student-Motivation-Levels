@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>StudentIQ — Motivation Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060812;--bg2:#0c1124;
+  --card:rgba(255,255,255,0.034);--card-border:rgba(255,255,255,0.08);
+  --teal:#00f5d4;--purple:#7b2ff7;--pink:#f72ff7;--amber:#f7c32f;--blue:#2f8ef7;
+  --text:#e8eaf0;--muted:rgba(232,234,240,0.5);
+  --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
+  --radius:16px;--glow-teal:0 0 40px rgba(0,245,212,0.18);
+  --glow-purple:0 0 40px rgba(123,47,247,0.2);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden}
+
+/* BG */
+#particleCanvas{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5}
+.bg-orbs{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.12;animation:orbFloat 12s ease-in-out infinite}
+.orb1{width:600px;height:600px;background:radial-gradient(circle,var(--purple),transparent);top:-200px;left:-150px}
+.orb2{width:500px;height:500px;background:radial-gradient(circle,var(--teal),transparent);bottom:-100px;right:-100px;animation-delay:-4s}
+.orb3{width:400px;height:400px;background:radial-gradient(circle,var(--pink),transparent);top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:-8s}
+@keyframes orbFloat{0%,100%{transform:scale(1) translateY(0)}50%{transform:scale(1.1) translateY(-30px)}}
+
+/* HEADER */
+.header{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:2rem;padding:1rem 2rem;background:rgba(6,8,18,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--card-border)}
+.logo{display:flex;align-items:center;gap:.6rem}
+.logo-text{font-size:1.1rem;font-weight:800;letter-spacing:.05em}
+.nav{display:flex;gap:.25rem;margin-left:auto}
+.nav-btn{background:none;border:1px solid transparent;color:var(--muted);padding:.45rem 1.1rem;border-radius:30px;font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s}
+.nav-btn:hover{color:var(--text);border-color:var(--card-border)}
+.nav-btn.active{color:var(--teal);border-color:rgba(0,245,212,.4);background:rgba(0,245,212,.08)}
+.header-badge{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.badge-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
+
+/* MAIN */
+.main{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:0 2rem 4rem}
+.section{display:none;animation:fadeUp .45s ease both}
+.section.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+
+/* HERO */
+.section-hero{padding:3.5rem 0 2.5rem}
+.hero-label{font-family:var(--mono);font-size:.78rem;color:var(--teal);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.8rem}
+.hero-title{font-size:clamp(2.2rem,5vw,3.5rem);font-weight:800;line-height:1.1;margin-bottom:1rem;letter-spacing:-.02em}
+.gradient-text{background:linear-gradient(90deg,var(--teal),var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{color:var(--muted);max-width:520px;line-height:1.6;font-size:.95rem}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem}
+.stat-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:1.4rem;display:flex;align-items:center;gap:1rem;position:relative;overflow:hidden;cursor:default;transition:border-color .3s,transform .2s}
+.stat-card:hover{border-color:rgba(0,245,212,.3);transform:translateY(-2px)}
+.stat-glow{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 0,rgba(0,245,212,.08),transparent 70%);transition:opacity .3s}
+.stat-card:hover .stat-glow{opacity:1}
+.stat-icon{font-size:1.6rem}
+.stat-value{font-size:1.7rem;font-weight:800;color:var(--teal);font-family:var(--mono)}
+.stat-label{font-size:.75rem;color:var(--muted);margin-top:.1rem}
+
+/* CHART CARDS */
+.charts-row{display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+.chart-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:1.5rem;flex:1;min-width:280px;transition:border-color .3s}
+.chart-card:hover{border-color:rgba(0,245,212,.2)}
+.chart-card.wide{flex:1 1 340px}
+.chart-card.full{flex:1 1 100%}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem}
+.chart-header h3{font-size:.9rem;font-weight:700;color:var(--text)}
+.chart-tag{font-family:var(--mono);font-size:.7rem;color:var(--muted);background:rgba(255,255,255,.05);padding:.2rem .6rem;border-radius:20px}
+.chart-wrap{position:relative;height:240px}
+.chart-wrap.tall{height:320px}
+
+/* HEATMAP */
+.heatmap-container{display:grid;gap:2px;overflow-x:auto;padding:1rem 0}
+.heatmap-row{display:flex;gap:2px;align-items:center}
+.heatmap-label{font-family:var(--mono);font-size:.68rem;color:var(--muted);width:70px;text-align:right;padding-right:8px;flex-shrink:0}
+.heatmap-col-labels{display:flex;gap:2px;margin-left:78px;margin-bottom:2px}
+.heatmap-col-label{font-family:var(--mono);font-size:.65rem;color:var(--muted);width:52px;text-align:center}
+.heatmap-cell{width:52px;height:40px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.7rem;font-weight:500;transition:transform .15s;cursor:default}
+.heatmap-cell:hover{transform:scale(1.1);z-index:2}
+
+/* PREDICTOR */
+.predictor-layout{display:grid;grid-template-columns:1fr 400px;gap:1.5rem;align-items:start}
+.form-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:2rem}
+.form-section-label{font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:1.2rem;margin-top:1.5rem}
+.form-section-label:first-child{margin-top:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1rem}
+.form-group label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:.5rem;font-weight:600}
+.slider{width:100%;appearance:none;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--teal),var(--purple));outline:none;cursor:pointer}
+.slider::-webkit-slider-thumb{appearance:none;width:16px;height:16px;border-radius:50%;background:var(--text);box-shadow:0 0 8px rgba(0,245,212,.5);cursor:pointer}
+.range-val{font-family:var(--mono);font-size:.78rem;color:var(--teal);margin-top:.4rem;text-align:right}
+.toggle-group{display:flex;gap:.4rem}
+.toggle-btn{flex:1;padding:.5rem;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid var(--card-border);color:var(--muted);font-family:var(--font);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
+.toggle-btn.active{background:rgba(0,245,212,.12);border-color:rgba(0,245,212,.5);color:var(--teal)}
+.predict-btn{display:flex;align-items:center;justify-content:center;gap:.7rem;width:100%;padding:1rem;margin-top:1.5rem;border-radius:12px;background:linear-gradient(135deg,var(--teal),var(--purple));border:none;color:#060812;font-family:var(--font);font-size:1rem;font-weight:800;cursor:pointer;transition:all .2s;letter-spacing:.04em}
+.predict-btn:hover{transform:translateY(-2px);box-shadow:var(--glow-teal)}
+.predict-btn:active{transform:translateY(0)}
+.btn-icon{font-size:1.2rem;transition:transform .2s}
+.predict-btn:hover .btn-icon{transform:translateX(4px)}
+.result-panel{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:2rem;min-height:450px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:sticky;top:80px}
+.result-idle{text-align:center;color:var(--muted)}
+.idle-icon{font-size:3rem;margin-bottom:1rem;opacity:.5}
+.result-idle p{font-size:.85rem;line-height:1.6}
+.result-output{width:100%;animation:fadeUp .4s ease}
+.result-output.hidden,.result-loading.hidden,.result-idle.hidden{display:none}
+.result-badge{text-align:center;margin-bottom:2rem;padding:1.5rem;border-radius:12px;background:rgba(0,245,212,.06);border:1px solid rgba(0,245,212,.2)}
+.badge-level{font-size:2.8rem;font-weight:800;letter-spacing:-.02em;background:linear-gradient(90deg,var(--teal),var(--purple));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.badge-sub{color:var(--muted);font-size:.78rem;margin-top:.3rem}
+.prob-bars{width:100%;margin-bottom:1.5rem}
+.prob-row{display:flex;align-items:center;gap:.8rem;margin-bottom:.7rem}
+.prob-label{font-family:var(--mono);font-size:.75rem;color:var(--muted);width:55px}
+.prob-track{flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden}
+.prob-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.16,1,.3,1);background:linear-gradient(90deg,var(--teal),var(--purple))}
+.prob-pct{font-family:var(--mono);font-size:.75rem;color:var(--teal);width:40px;text-align:right}
+.derived-metrics{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.derived-chip{flex:1;min-width:80px;background:rgba(255,255,255,.04);border:1px solid var(--card-border);border-radius:8px;padding:.6rem;text-align:center}
+.derived-chip-val{font-family:var(--mono);font-size:.95rem;color:var(--amber);font-weight:500}
+.derived-chip-label{font-size:.65rem;color:var(--muted);margin-top:.2rem}
+.result-insight{padding:.8rem 1rem;border-radius:8px;background:rgba(123,47,247,.1);border-left:3px solid var(--purple);font-size:.82rem;color:var(--muted);line-height:1.5}
+.result-loading{text-align:center;color:var(--muted)}
+.loader-ring{width:48px;height:48px;border-radius:50%;margin:0 auto 1rem;border:3px solid rgba(255,255,255,.1);border-top-color:var(--teal);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ANALYTICS */
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;padding-top:1rem}
+.analytics-grid .chart-card.full{grid-column:1 / -1}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.predictor-layout{grid-template-columns:1fr}.result-panel{position:static}.stats-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.header{padding:.8rem 1rem}.main{padding:0 1rem 3rem}.stats-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.analytics-grid{grid-template-columns:1fr}.analytics-grid .chart-card.full{grid-column:1}.charts-row{flex-direction:column}.nav-btn{padding:.4rem .7rem;font-size:.75rem}}
+</style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+<canvas id="particleCanvas"></canvas>
+
+<header class="header">
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="13" stroke="url(#lg1)" stroke-width="2"/>
+      <path d="M8 14 L14 8 L20 14 L14 20 Z" fill="url(#lg1)" opacity="0.8"/>
+      <circle cx="14" cy="14" r="3" fill="#00f5d4"/>
+      <defs><linearGradient id="lg1" x1="0" y1="0" x2="28" y2="28"><stop offset="0%" stop-color="#00f5d4"/><stop offset="100%" stop-color="#7b2ff7"/></linearGradient></defs>
+    </svg>
+    <span class="logo-text">StudentIQ</span>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" data-section="dashboard">Dashboard</button>
+    <button class="nav-btn" data-section="predictor">Predictor</button>
+    <button class="nav-btn" data-section="analytics">Analytics</button>
+  </nav>
+  <div class="header-badge"><span class="badge-dot"></span><span>Live Model</span></div>
+</header>
+
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <section id="dashboard" class="section active">
+    <div class="section-hero">
+      <div class="hero-label">XGBoost · Student Performance</div>
+      <h1 class="hero-title">Student Motivation<br/><span class="gradient-text">Intelligence Engine</span></h1>
+      <p class="hero-sub">ML-powered prediction of student motivation levels using behavioral, academic &amp; support signals.</p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-body"><div class="stat-value" id="stat-accuracy">—</div><div class="stat-label">Model Accuracy</div></div><div class="stat-glow"></div></div>
+      <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-body"><div class="stat-value" id="stat-students">—</div><div class="stat-label">Students Analyzed</div></div><div class="stat-glow"></div></div>
+      <div class="stat-card"><div class="stat-icon">📚</div><div class="stat-body"><div class="stat-value" id="stat-study">—</div><div class="stat-label">Avg Study Hrs/Week</div></div><div class="stat-glow"></div></div>
+      <div class="stat-card"><div class="stat-icon">🧬</div><div class="stat-body"><div class="stat-value">12</div><div class="stat-label">Feature Inputs</div></div><div class="stat-glow"></div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card wide"><div class="chart-header"><h3>Motivation Level Distribution</h3><span class="chart-tag">Dataset Overview</span></div><div class="chart-wrap"><canvas id="motivationDonut"></canvas></div></div>
+      <div class="chart-card wide"><div class="chart-header"><h3>Study Time Distribution</h3><span class="chart-tag">Weekly Hours</span></div><div class="chart-wrap"><canvas id="studyHist"></canvas></div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card full"><div class="chart-header"><h3>Feature Importance</h3><span class="chart-tag">XGBoost Scores</span></div><div class="chart-wrap tall"><canvas id="featureBar"></canvas></div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card wide"><div class="chart-header"><h3>Study Time vs Motivation</h3><span class="chart-tag">Box Plot</span></div><div class="chart-wrap"><canvas id="boxPlot"></canvas></div></div>
+      <div class="chart-card wide"><div class="chart-header"><h3>Age Distribution</h3><span class="chart-tag">Demographics</span></div><div class="chart-wrap"><canvas id="ageBar"></canvas></div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card full"><div class="chart-header"><h3>Correlation Heatmap</h3><span class="chart-tag">Feature Relationships</span></div><div id="heatmapContainer" class="heatmap-container"></div></div>
+    </div>
+  </section>
+
+  <!-- PREDICTOR -->
+  <section id="predictor" class="section">
+    <div class="section-hero">
+      <div class="hero-label">Live Inference</div>
+      <h2 class="hero-title">Predict Motivation<br/><span class="gradient-text">Level</span></h2>
+      <p class="hero-sub">Enter a student's profile to get an instant AI-powered motivation prediction.</p>
+    </div>
+    <div class="predictor-layout">
+      <div class="form-card">
+        <div class="form-section-label">📋 Academic Profile</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Age</label><input type="range" id="f-age" min="14" max="20" value="17" class="slider"/><div class="range-val"><span id="v-age">17</span> years</div></div>
+          <div class="form-group"><label>Study Time (hrs/week)</label><input type="range" id="f-study" min="0" max="30" value="10" class="slider"/><div class="range-val"><span id="v-study">10</span> hrs</div></div>
+          <div class="form-group"><label>Absences</label><input type="range" id="f-absences" min="0" max="30" value="3" class="slider"/><div class="range-val"><span id="v-absences">3</span> days</div></div>
+          <div class="form-group"><label>Parental Support</label><input type="range" id="f-parental" min="0" max="4" value="2" class="slider"/><div class="range-val"><span id="v-parental">2</span> / 4</div></div>
+        </div>
+        <div class="form-section-label">🎯 Engagement</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Tutoring</label><div class="toggle-group" data-field="tutoring"><button class="toggle-btn active" data-val="0">None</button><button class="toggle-btn" data-val="1">Yes</button></div></div>
+          <div class="form-group"><label>Extracurricular</label><div class="toggle-group" data-field="extracurricular"><button class="toggle-btn active" data-val="0">No</button><button class="toggle-btn" data-val="1">Yes</button></div></div>
+          <div class="form-group"><label>Sports</label><div class="toggle-group" data-field="sports"><button class="toggle-btn active" data-val="0">No</button><button class="toggle-btn" data-val="1">Yes</button></div></div>
+          <div class="form-group"><label>Music</label><div class="toggle-group" data-field="music"><button class="toggle-btn active" data-val="0">No</button><button class="toggle-btn" data-val="1">Yes</button></div></div>
+          <div class="form-group"><label>Volunteering</label><div class="toggle-group" data-field="volunteering"><button class="toggle-btn active" data-val="0">No</button><button class="toggle-btn" data-val="1">Yes</button></div></div>
+        </div>
+        <button id="predictBtn" class="predict-btn"><span class="btn-text">Run Prediction</span><span class="btn-icon">→</span></button>
+      </div>
+      <div class="result-panel" id="resultPanel">
+        <div class="result-idle" id="resultIdle"><div class="idle-icon">🎯</div><p>Configure the student profile<br/>and run prediction</p></div>
+        <div class="result-output hidden" id="resultOutput">
+          <div class="result-badge"><div class="badge-level" id="predLevel">—</div><div class="badge-sub">Motivation Level</div></div>
+          <div class="prob-bars" id="probBars"></div>
+          <div class="derived-metrics" id="derivedMetrics"></div>
+          <div class="result-insight" id="resultInsight"></div>
+        </div>
+        <div class="result-loading hidden" id="resultLoading"><div class="loader-ring"></div><p>Analyzing profile...</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ANALYTICS -->
+  <section id="analytics" class="section">
+    <div class="section-hero">
+      <div class="hero-label">Deep Dive</div>
+      <h2 class="hero-title">Dataset<br/><span class="gradient-text">Analytics</span></h2>
+    </div>
+    <div class="analytics-grid">
+      <div class="chart-card"><div class="chart-header"><h3>Motivation vs Study Efficiency</h3></div><div class="chart-wrap"><canvas id="scatterPlot"></canvas></div></div>
+      <div class="chart-card"><div class="chart-header"><h3>Support Score Impact</h3></div><div class="chart-wrap"><canvas id="supportRadar"></canvas></div></div>
+      <div class="chart-card full"><div class="chart-header"><h3>Study Efficiency by Motivation Class</h3></div><div class="chart-wrap"><canvas id="efficiencyLine"></canvas></div></div>
+      <div class="chart-card"><div class="chart-header"><h3>Activity Participation</h3></div><div class="chart-wrap"><canvas id="activityPolar"></canvas></div></div>
+      <div class="chart-card"><div class="chart-header"><h3>Absences vs GPA</h3></div><div class="chart-wrap"><canvas id="absenceScatter"></canvas></div></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ── Chart.js defaults ─────────────────────────────────────────────
+Chart.defaults.color = 'rgba(232,234,240,0.55)';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.07)';
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 11;
+const TEAL='#00f5d4',PURPLE='#7b2ff7',PINK='#f72ff7',AMBER='#f7c32f',BLUE='#2f8ef7';
+const MUTED='rgba(232,234,240,0.4)';
+const chartInstances={};
+function destroyChart(id){if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];}}
+function createGradient(ctx,c1,c2){const g=ctx.createLinearGradient(0,0,0,300);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
+function animateCounter(id,target,suffix,decimals){
+  const el=document.getElementById(id);if(!el)return;
+  let start=0;const step=target/60;
+  const timer=setInterval(()=>{start=Math.min(start+step,target);el.textContent=start.toFixed(decimals)+suffix;if(start>=target)clearInterval(timer);},16);
+}
+
+// ── Particles ─────────────────────────────────────────────────────
+(function(){
+  const canvas=document.getElementById('particleCanvas');
+  const ctx=canvas.getContext('2d');
+  let W,H,particles;
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+  function create(){particles=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.5+.3,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,a:Math.random()*.6+.1}));}
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    particles.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(0,245,212,${p.a})`;ctx.fill();p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;});
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',()=>{resize();create();});
+  resize();create();draw();
+})();
+
+// ── Nav routing ───────────────────────────────────────────────────
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const sec=btn.dataset.section;
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    document.getElementById(sec).classList.add('active');
+    if(sec==='analytics')renderAnalyticsCharts();
+  });
+});
+
+// Sliders 
+['age','study','absences','parental'].forEach(n=>{
+  const s=document.getElementById(`f-${n}`),d=document.getElementById(`v-${n}`);
+  if(s)s.addEventListener('input',()=>d.textContent=s.value);
+});
+
+// Toggles 
+document.querySelectorAll('.toggle-group').forEach(g=>{
+  g.querySelectorAll('.toggle-btn').forEach(b=>{
+    b.addEventListener('click',()=>{g.querySelectorAll('.toggle-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');});
+  });
+});
+function getToggleVal(field){const g=document.querySelector(`.toggle-group[data-field="${field}"]`);return g?parseInt(g.querySelector('.toggle-btn.active')?.dataset.val||'0'):0;}
+
+//  Prediction 
+document.getElementById('predictBtn').addEventListener('click',async()=>{
+  const idle=document.getElementById('resultIdle'),output=document.getElementById('resultOutput'),loading=document.getElementById('resultLoading');
+  idle.classList.add('hidden');output.classList.add('hidden');loading.classList.remove('hidden');
+  const payload={
+    age:document.getElementById('f-age').value,
+    study_time:document.getElementById('f-study').value,
+    absences:document.getElementById('f-absences').value,
+    parental_support:document.getElementById('f-parental').value,
+    tutoring:getToggleVal('tutoring'),extracurricular:getToggleVal('extracurricular'),
+    sports:getToggleVal('sports'),music:getToggleVal('music'),volunteering:getToggleVal('volunteering')
+  };
+  try{
+    const res=await fetch('/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json();
+    loading.classList.add('hidden');renderResult(data);output.classList.remove('hidden');
+  }catch(e){loading.classList.add('hidden');idle.classList.remove('hidden');alert('Prediction failed. Make sure Flask is running.');}
+});
+
+function renderResult(data){
+  const level=document.getElementById('predLevel');
+  level.textContent=data.prediction;
+  const colors={Low:PINK,Medium:AMBER,High:TEAL};
+  const c=colors[data.prediction]||TEAL;
+  level.style.background=`linear-gradient(90deg,${c},${PURPLE})`;
+  level.style.webkitBackgroundClip='text';level.style.backgroundClip='text';
+  const pb=document.getElementById('probBars');pb.innerHTML='';
+  Object.entries(data.probabilities).forEach(([label,prob])=>{
+    const pct=Math.round(prob*100);
+    pb.innerHTML+=`<div class="prob-row"><div class="prob-label">${label}</div><div class="prob-track"><div class="prob-fill" style="width:0%" data-target="${pct}%"></div></div><div class="prob-pct">${pct}%</div></div>`;
+  });
+  setTimeout(()=>{pb.querySelectorAll('.prob-fill').forEach(el=>el.style.width=el.dataset.target);},50);
+  const dm=document.getElementById('derivedMetrics');dm.innerHTML='';
+  const metrics={'Study Eff.':data.inputs?.study_efficiency,'Support':data.inputs?.support_score,'Activity':data.inputs?.activity_score};
+  Object.entries(metrics).forEach(([label,val])=>{dm.innerHTML+=`<div class="derived-chip"><div class="derived-chip-val">${val??'—'}</div><div class="derived-chip-label">${label}</div></div>`;});
+  const insights={High:'🚀 Excellent profile! Strong engagement patterns detected. Encourage advanced challenges.',Medium:'📈 Solid foundation. Increasing study consistency can push to High motivation.',Low:'⚠️ Risk signals detected. Consider targeted tutoring and stronger support structure.'};
+  document.getElementById('resultInsight').textContent=insights[data.prediction]||'Analysis complete.';
+}
+
+// Analytics mock data 
+const ANALYTICS={
+  model_accuracy:87.6,total_students:1000,avg_study_time:14.3,
+  motivation_dist:{Low:312,Medium:478,High:210},
+  study_time_hist:{bins:['0-5h','5-10h','10-15h','15-20h','20-25h','25-30h'],counts:[45,132,210,178,95,40]},
+  study_vs_motivation:{Low:{q1:3.2,median:6.1,q3:9.8},Medium:{q1:7.5,median:12.3,q3:17.1},High:{q1:14.2,median:19.5,q3:24.8}},
+  feature_importance:{Absences:.22,StudyTimeWeekly:.19,study_efficiency:.16,ParentalSupport:.12,support_score:.09,Tutoring:.07,activity_score:.05,Age:.04,Extracurricular:.03,Sports:.01,Music:.01,Volunteering:.01},
+  correlation_matrix:{labels:['GPA','StudyTime','Absences','Support','Tutoring','Activity'],data:[[1.0,.72,-.65,.48,.41,.23],[.72,1.0,-.58,.36,.45,.31],[-.65,-.58,1.0,-.29,-.22,-.15],[.48,.36,-.29,1.0,.52,.18],[.41,.45,-.22,.52,1.0,.12],[.23,.31,-.15,.18,.12,1.0]]},
+  age_distribution:{ages:[15,16,17,18],counts:[198,312,264,226]}
+};
+
+// Dashboard charts
+function renderDashboardCharts(){
+  const d=ANALYTICS;
+  animateCounter('stat-accuracy',d.model_accuracy,'%',1);
+  animateCounter('stat-students',d.total_students,'',0);
+  animateCounter('stat-study',d.avg_study_time,'h',1);
+
+  destroyChart('motivationDonut');
+  chartInstances['motivationDonut']=new Chart(document.getElementById('motivationDonut').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:Object.keys(d.motivation_dist),datasets:[{data:Object.values(d.motivation_dist),backgroundColor:[PINK,AMBER,TEAL],borderColor:'#060812',borderWidth:3,hoverOffset:8}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:16,usePointStyle:true}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw} students`}}},cutout:'68%',animation:{animateRotate:true,duration:900}}
+  });
+
+  destroyChart('studyHist');
+  const ctx2=document.getElementById('studyHist').getContext('2d');
+  chartInstances['studyHist']=new Chart(ctx2,{
+    type:'bar',
+    data:{labels:d.study_time_hist.bins,datasets:[{label:'Students',data:d.study_time_hist.counts,backgroundColor:createGradient(ctx2,TEAL,PURPLE),borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(255,255,255,.05)'},beginAtZero:true}},animation:{duration:900}}
+  });
+
+  destroyChart('featureBar');
+  const feats=Object.entries(d.feature_importance).sort((a,b)=>a[1]-b[1]);
+  chartInstances['featureBar']=new Chart(document.getElementById('featureBar').getContext('2d'),{
+    type:'bar',
+    data:{labels:feats.map(f=>f[0]),datasets:[{label:'Importance',data:feats.map(f=>f[1]),backgroundColor:feats.map((_,i)=>`hsl(${170+i*16},80%,55%)`),borderRadius:4,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},beginAtZero:true},y:{grid:{display:false}}},animation:{duration:1000}}
+  });
+
+  destroyChart('boxPlot');
+  const bp=d.study_vs_motivation;const bpLabels=Object.keys(bp);const bpColors=[PINK,AMBER,TEAL];
+  chartInstances['boxPlot']=new Chart(document.getElementById('boxPlot').getContext('2d'),{
+    type:'bar',
+    data:{labels:bpLabels,datasets:[
+      {label:'IQR Range',data:bpLabels.map(l=>[bp[l].q1,bp[l].q3]),backgroundColor:bpColors.map(c=>c+'55'),borderColor:bpColors,borderWidth:2,borderRadius:4,borderSkipped:false},
+      {label:'Median',data:bpLabels.map(l=>bp[l].median),type:'line',borderColor:'#fff',borderWidth:2,pointBackgroundColor:'#fff',pointRadius:6,fill:false,tension:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{usePointStyle:true}}},scales:{y:{title:{display:true,text:'Study Hours/Week',color:MUTED},grid:{color:'rgba(255,255,255,.05)'}},x:{grid:{display:false}}}}
+  });
+
+  destroyChart('ageBar');
+  chartInstances['ageBar']=new Chart(document.getElementById('ageBar').getContext('2d'),{
+    type:'bar',
+    data:{labels:d.age_distribution.ages.map(a=>`Age ${a}`),datasets:[{label:'Students',data:d.age_distribution.counts,backgroundColor:[BLUE,TEAL,PURPLE,PINK],borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(255,255,255,.05)'},beginAtZero:true}}}
+  });
+
+  renderHeatmap(d.correlation_matrix);
+}
+
+function renderHeatmap(matrix){
+  const container=document.getElementById('heatmapContainer');container.innerHTML='';
+  const labels=matrix.labels,data=matrix.data;
+  const colRow=document.createElement('div');colRow.className='heatmap-col-labels';
+  labels.forEach(l=>{const el=document.createElement('div');el.className='heatmap-col-label';el.textContent=l;colRow.appendChild(el);});
+  container.appendChild(colRow);
+  data.forEach((row,ri)=>{
+    const rowEl=document.createElement('div');rowEl.className='heatmap-row';
+    const labelEl=document.createElement('div');labelEl.className='heatmap-label';labelEl.textContent=labels[ri];rowEl.appendChild(labelEl);
+    row.forEach((val,ci)=>{
+      const cell=document.createElement('div');cell.className='heatmap-cell';cell.textContent=val.toFixed(2);
+      const abs=Math.abs(val);
+      cell.style.background=val>0?`rgba(0,245,212,${abs*.85})`:`rgba(247,47,247,${abs*.85})`;
+      cell.style.color=abs>.5?'#060812':'#e8eaf0';
+      cell.title=`${labels[ri]} × ${labels[ci]}: ${val.toFixed(2)}`;
+      rowEl.appendChild(cell);
+    });
+    container.appendChild(rowEl);
+  });
+}
+
+// Analytics charts 
+let analyticsRendered=false;
+function renderAnalyticsCharts(){
+  if(analyticsRendered)return;analyticsRendered=true;
+
+  destroyChart('scatterPlot');
+  chartInstances['scatterPlot']=new Chart(document.getElementById('scatterPlot').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[{label:'Low',color:PINK,range:[.3,3]},{label:'Medium',color:AMBER,range:[1.5,6]},{label:'High',color:TEAL,range:[3,12]}].map(g=>({label:g.label,data:Array.from({length:40},()=>({x:+(Math.random()*(g.range[1]-g.range[0])+g.range[0]).toFixed(2),y:+(Math.random()*4+(g.range[0]*.5)).toFixed(2)})),backgroundColor:g.color+'99',pointRadius:5,pointHoverRadius:8}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{usePointStyle:true}}},scales:{x:{title:{display:true,text:'Study Efficiency',color:MUTED},grid:{color:'rgba(255,255,255,.05)'}},y:{title:{display:true,text:'Support Score',color:MUTED},grid:{color:'rgba(255,255,255,.05)'}}}}
+  });
+
+  destroyChart('supportRadar');
+  chartInstances['supportRadar']=new Chart(document.getElementById('supportRadar').getContext('2d'),{
+    type:'radar',
+    data:{labels:['Tutoring','Parental Support','Study Time','Activities','Attendance','Efficiency'],datasets:[
+      {label:'High Motivation',data:[.8,.9,.95,.7,.92,.88],backgroundColor:TEAL+'22',borderColor:TEAL,borderWidth:2,pointBackgroundColor:TEAL},
+      {label:'Low Motivation',data:[.2,.3,.35,.25,.42,.28],backgroundColor:PINK+'22',borderColor:PINK,borderWidth:2,pointBackgroundColor:PINK}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{usePointStyle:true}}},scales:{r:{ticks:{display:false},grid:{color:'rgba(255,255,255,.08)'},angleLines:{color:'rgba(255,255,255,.08)'}}}}
+  });
+
+  destroyChart('efficiencyLine');
+  const xVals=Array.from({length:20},(_,i)=>(i*.2).toFixed(1));
+  chartInstances['efficiencyLine']=new Chart(document.getElementById('efficiencyLine').getContext('2d'),{
+    type:'line',
+    data:{labels:xVals,datasets:[
+      {label:'High Motivation',data:xVals.map(x=>(parseFloat(x)*3+5+Math.random()).toFixed(2)),borderColor:TEAL,backgroundColor:TEAL+'18',fill:true,tension:.4,pointRadius:3},
+      {label:'Medium Motivation',data:xVals.map(x=>(parseFloat(x)*1.8+2+Math.random()).toFixed(2)),borderColor:AMBER,backgroundColor:AMBER+'18',fill:true,tension:.4,pointRadius:3},
+      {label:'Low Motivation',data:xVals.map(x=>(parseFloat(x)*.8+Math.random()).toFixed(2)),borderColor:PINK,backgroundColor:PINK+'18',fill:true,tension:.4,pointRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{usePointStyle:true}}},scales:{x:{title:{display:true,text:'Normalized GPA',color:MUTED},grid:{color:'rgba(255,255,255,.05)'}},y:{title:{display:true,text:'Study Efficiency',color:MUTED},grid:{color:'rgba(255,255,255,.05)'}}}}
+  });
+
+  destroyChart('activityPolar');
+  chartInstances['activityPolar']=new Chart(document.getElementById('activityPolar').getContext('2d'),{
+    type:'polarArea',
+    data:{labels:['Sports','Music','Volunteering','Extracurricular','Tutoring'],datasets:[{data:[38,27,19,45,52],backgroundColor:[BLUE+'cc',TEAL+'cc',PURPLE+'cc',PINK+'cc',AMBER+'cc'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,padding:12}}},scales:{r:{ticks:{display:false},grid:{color:'rgba(255,255,255,.06)'}}}}
+  });
+
+  destroyChart('absenceScatter');
+  chartInstances['absenceScatter']=new Chart(document.getElementById('absenceScatter').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[{label:'Students',data:Array.from({length:80},()=>{const a=Math.floor(Math.random()*28),g=Math.max(.5,4.0-a*.1+(Math.random()-.5)*.8);return{x:a,y:+g.toFixed(2)};}),backgroundColor:ctx=>{const v=ctx.raw;if(!v)return MUTED;return`rgba(0,245,212,${.3+(v.y/4.0)*.6})`;},pointRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'Absences (days)',color:MUTED},grid:{color:'rgba(255,255,255,.05)'}},y:{title:{display:true,text:'GPA',color:MUTED},grid:{color:'rgba(255,255,255,.05)'},min:0,max:4.2}}}
+  });
+}
+renderDashboardCharts();
+</script>
+</body>
+</html>
